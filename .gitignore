@@ -1,0 +1,6 @@
+.idea
+*.iml
+/ansible/tests/config.json
+/ansible/tests/recordings
+/ansible/tests/__pycache__
+.env

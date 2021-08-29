@@ -1,0 +1,40 @@
+- hosts: localhost
+  vars:
+    release: '2021-08-18'
+  tasks:
+    - name: Download encrypted software
+      amazon.aws.aws_s3:
+        bucket: "{{ bucket }}"
+        object: 'our_soft/{{ release }}.tar.gz'
+        dest: '/downloads/{{ release }}.tar.gz'
+        mode: get
+    - name: Get Metadata
+      ansible.builtin.command: >
+        aws dynamodb get-item --table-name top_sec_download_meta --key  '{{ '{"release":{"S":"' }}{{ release }}{{ '"}}' }}'
+      register: meta
+    - name: Extract signature
+      ansible.builtin.set_fact:
+        signature: "{{ meta.stdout | from_json | json_query('Item.signature.S') }}"
+    - name: Calculate Checksum
+      ansible.builtin.shell: 'sha256sum /downloads/{{ release }}.tar.gz | cut -d " " -f 1 | xxd -r -p | base64'
+      register: checksum
+    - name: "Debug Output"
+      ansible.builtin.debug:
+        msg:
+          - "Meta={{ meta.stdout }}"
+          - "Signature={{ signature }}"
+          - "KeyId={{ key_id }}"
+    - name: Decrypt Checksum
+      ansible.builtin.command: 'aws kms verify --signature {{ signature }} --message-type DIGEST --message {{ checksum.stdout }} --key-id {{ key_id }} --signing-algorithm RSASSA_PSS_SHA_256 --query SignatureValid --output text'
+      register: valid
+    - name: Debug
+      debug:
+        msg: "{{valid}}"
+
+    - name: Compare if failed
+      fail: msg="Tampered File"
+      when: valid.stdout != "True"
+    - name: Write Log File
+      ansible.builtin.file:
+        path: /tmp/successful_check.txt
+        state: touch

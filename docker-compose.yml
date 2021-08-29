@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  httpproxy:
+    expose:
+      - 8080
+    build:
+      dockerfile: httpproxy/Dockerfile
+      context: .
+    volumes:
+      - $PWD/ansible/tests/recordings:/recordings
+  ec2sim:
+    depends_on:
+      - httpproxy
+    environment:
+      HTTPS_PROXY: https://httpproxy:8080
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+      AWS_ACCESS_KEY_ID: "${ACCESS_KEY}"
+      AWS_SECRET_ACCESS_KEY: "${SECRET_KEY}"
+      AWS_DEFAULT_REGION: "${REGION}"
+    volumes:
+      - $PWD/ansible:/ansible
+    build:
+      context: .
+      dockerfile: ec2/Dockerfile

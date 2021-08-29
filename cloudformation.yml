@@ -1,0 +1,47 @@
+Resources:
+  TestSoftwareBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join [-, [test-sec-software, !Ref AWS::AccountId]]
+      Tags:
+        - Key: Purpose
+          Value: DevTests
+  TestSoftwareMeta:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: release
+          AttributeType: S
+      KeySchema:
+        - AttributeName: release
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      TableName: top_sec_download_meta
+      Tags:
+        - Key: Purpose
+          Value: DevTests
+  TestSigningKey:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyUsage: SIGN_VERIFY
+      KeySpec: RSA_4096
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: key-default-1
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: kms:*
+            Resource: "*"
+      Tags:
+        - Key: Purpose
+          Value: DevTests2
+Outputs:
+  KeyId:
+    Value: !GetAtt TestSigningKey.KeyId
+  BucketName:
+    Value: !Ref TestSoftwareBucket
